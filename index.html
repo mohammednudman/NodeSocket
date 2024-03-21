@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Websocket Client | Mohammed Nudman Raza Shaikh</title>
+</head>
+<body>
+    <output id="messages"></output>
+    <script>
+        const messages = document.getElementById("messages");
+        const socket = new WebSocket('ws://localhost:1337');
+        socket.onopen = (event) => {
+            console.log("Websocket server connected")
+            const id = Math.round(Math.random() * 100);
+            console.log("Sending...", id);
+            const data = JSON.stringify({
+                id,
+                name: `[${id}] Mohammed Nudman Raza Shaikh`,
+                address : {
+                    street: "My Street",
+                    number: 20 * id
+                },
+                professional: 'Developer'
+            })
+            socket.send(data);
+        };
+        socket.onmessage = (message) => {console.log("I got a message! ", message)};
+        socket.onclose = (event) => {console.log("Disconnected from websocket server")};
+        socket.onerror = (error) => {console.log("Websocket error: " + error)};
+    </script>
+</body>
+</html>
