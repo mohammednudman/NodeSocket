@@ -9,6 +9,8 @@ const SIXTEEN_BITS_INTEGER_MARKER = 126
 const SIXTYFOUR_BITS_INTEGER_MARKER = 127
 
 const MAXIMUM_SIXTEEN_BITS_INTEGER = 2 ** 16 // 0 to 65536
+const MAXIMUM_SIXTYFOUR_BITS_INTEGER = Number.MAX_SAFE_INTEGER;
+
 const MASK_KEY_BYTES_LENGTH = 4
 const OPCODE_TEXT = 0x01 // 1 bit in binary 1
 
@@ -75,9 +77,16 @@ function prepareMessage(message) {
         // [3] 113 - content length
         // [ 4 - ..] - the message itself
     }
-    else {
-        throw new Error('message too long buddy :( ')
+    else if (messageSize <= MAXIMUM_SIXTYFOUR_BITS_INTEGER) {
+        const offsetEightBytes = 8;
+        const target = Buffer.allocUnsafe(offsetEightBytes);
+        target[0] = firstByte;
+        target[1] = SIXTYFOUR_BITS_INTEGER_MARKER | 0x0; // just to know the mask
+
+        target.writeBigUInt64BE(BigInt(messageSize), 2); // content length is 8 bytes
+        dataFrameBuffer = target;
     }
+
     const totalLength = dataFrameBuffer.byteLength + messageSize
     return concat([dataFrameBuffer, msg], totalLength)
 
@@ -113,8 +122,9 @@ function onSocketReadable(socket) {
         // unsigned, big-endian 16-bit integer [0 - 65K] - 2 ** 16
         messageLength = socket.read(2).readUint16BE(0)
     }
-    else {
-        throw new Error(`your message is too long! we don't handle 64-bit messages`)
+    else if (lengthIndicatorInBits === SIXTYFOUR_BITS_INTEGER_MARKER) {
+        // Read 64-bit unsigned integer (8 bytes)
+        messageLength = socket.read(8).readBigUInt64BE(0);
     }
 
 
